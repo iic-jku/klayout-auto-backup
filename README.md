@@ -14,8 +14,16 @@ This add-on can be installed through [KLayout](https://klayout.de) package manag
 
 ### Tool activation and deactivation
 
-- Activate or deactivate the *Auto Backup* plugin by selecting *File*→*Automatic Backups*→*Enable Automatic Backups* in the main menu
-- Configure backup settings by clicking *File*→*Automatic Backups*→*Setup Automatic Backups* in the main menu
+Activate or deactivate the *Auto Backup* plugin by selecting *File*→*Automatic Backups*→*Enable Automatic Backups* in the main menu
+<p align="center">
+<img align="middle" src="doc/klayout-auto-backup-menu.jpg" alt="Menu File → Automatic Backups" width="800"/>
+</p>
+
+Configure backup settings by clicking *File*→*Automatic Backups*→*Setup Automatic Backups* in the main menu
+<p align="center">
+<img align="middle" src="doc/klayout-auto-backup-config.jpg" alt="Setup Automatic Backups" width="800"/>
+</p>
+
 
 ## Installation using KLayout Package Manager
 

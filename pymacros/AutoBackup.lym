@@ -253,24 +253,36 @@ class AutoBackupConfigPage(pya.QDialog):
         if DEBUG:
             debug("AutoBackupConfigPage.on_reset")
         
-        config = BackupConfig()
-        self.update_ui_from_config(config)
-    
+        try:
+            config = BackupConfig()
+            self.update_ui_from_config(config)    
+        except Exception as e:
+            print("AutoBackupConfigPage.on_reset caught an exception", e)
+            traceback.print_exc()
+        
     def on_ok(self):
         if DEBUG:
             debug("AutoBackupConfigPage.on_ok")
         
-        config = self.config_from_ui()
-        config.save()
+        try:
+            config = self.config_from_ui()
+            config.save()        
+        except Exception as e:
+            print("AutoBackupConfigPage.on_ok caught an exception", e)
+            traceback.print_exc()
         
         self.accept()
 
     def on_apply(self):
         if DEBUG:
             debug("AutoBackupConfigPage.on_apply")
-    
-        config = self.config_from_ui()
-        config.save()
+
+        try:
+            config = self.config_from_ui()
+            config.save()        
+        except Exception as e:
+            print("AutoBackupConfigPage.on_apply caught an exception", e)
+            traceback.print_exc()
         
     def on_cancel(self):
         if DEBUG:
@@ -285,9 +297,9 @@ class AutoBackupConfigPage(pya.QDialog):
             trigger_by_changes = self.page.trigger_by_changes_rb.checked,
             trigger_change_theshold = self.page.max_changes_sb.value,
             use_relative_folder_path = self.page.relative_path_le.text,
-            relative_path = self.page.relative_path_le.text,
+            relative_path = Path(self.page.relative_path_le.text),
             use_custom_folder_path = self.page.custom_folder_rb.checked,
-            custom_folder_path = self.page.folder_path_le.text,
+            custom_folder_path = Path(self.page.folder_path_le.text),
             file_format = LayoutFileFormat(self.page.file_format_cob.currentText),
             use_file_name_timestamps = self.page.include_timestamp_rb.checked,
             use_incremental_file_versions = self.page.incremental_version_numbers_rb.checked

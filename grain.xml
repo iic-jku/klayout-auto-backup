@@ -3,7 +3,7 @@
  <name>AutoBackupPlugin</name>
  <token/>
  <hidden>false</hidden>
- <version>0.1</version>
+ <version>0.2</version>
  <api-version/>
  <title>Automatic Backups</title>
  <doc>Create automatic backups of edited layouts</doc>
@@ -12,6 +12,11 @@
  <license>GPLv3</license>
  <author>Martin Jan Köhler</author>
  <author-contact/>
+ <depends>
+  <name>KLayoutPluginUtils</name>
+  <url/>
+  <version>0.3</version>
+ </depends>
  <authored-time/>
  <installed-time></installed-time>
  <icon>iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAACXBIWXMAAB2HAAAdhwGP5fFlAAAAGXRFWHRTb2Z0d2FyZQB3d3cuaW5rc2NhcGUub3Jnm+48GgAAA3BJREFUWIXtl09II2cYh5+JIQmyNSHQRU+CLkENyoIkwpJUSJEi1V0wIC6ldguVRRCLp/RS6hLcmkMOhYAUFhoppSA6hyYogbCHKoqgIBkIgiIoHlJqVpeaS4x+PVTTNH8nyUIp9Acfmcm8875PJr/v+96Bf1lSsS+FEFbADWjqSi5Js1XfJISw7u/v+1paWn4DRK1DCFFb8Xg87mtubq6reDUA2rxzt8vlepZIJO4bjUY8Hg92ux2AnZ0d1tbWuLm5KZtwfX1dTd2SAJpEInEfwOPx0N/fn73gdDrR6/XIsqw6ef5TKOaJfICsbDYbAJOTk2QyGQKBAHa7nYODAxRFqVhckqRv8mBeFIsr6fLGxkYAYrEY8XicQCAAgNvtxmQyVQRQK40QQiuE+EII8TPwNBQKEQqFCgJlWWZjYwODwcDo6CiSVHQGZ+V0OnE6nZUBgGfAE+BepeBvX74kmUzS1tb2D3+olRBiNnfAXx5wAfT09DxSFMVc6uaPHvUQ2YwxNzeH3+9nYGCAw8NDTk9PVRUv5QkN8B5AueKOhw/4wfuc981Gtre3WVpaoqGhgbGxMXQ6nSqAUiqYBUL+FHT3io7F+S/5+LmXhYUFrFYr7e3t2Gw2VldXMRqNZQvd+SF/nahqrR/8oJfJTx5zdXWF3+9Hr9fT19fHxcVFNWlqB8iVVqvFZDJhMBhqLl41wNqvuyz89As6nQ6v1wvA7u5uXQAFHpBGfiwIcjx8wJJ/hs+++g4hBDMzM3R0dHB+fk44HK4LQAP8AdDd3f2mVNDG3iGff/09v795i8PhYHx8nOvra6LRKOl0ui4ALfAaeBKLxTYBSzgctuQGDA8PAxDZjNHU1MTExARHR0csLi6yvLycjTs5OakZIHh7/GGl4OnpacxmM4qisLKyUlPBAgBJkjLAK+CVEGJ2aGjo7trT208LwMjICIODgySTSfb29pifnyedTheMra0tzs7O1APknuTu10IIC9Db1dVFJpNhamoKgGAwSCqVqvH3VgDI02ug1+fzAZBKpZBlOduQRCKRsonVeqIcQBB4fHl5aQGIRqMEg0FVSatR2U29WGN5t6vdre3Hx8d0dnbicrnKeqK1tRX4ey8QQryQJGm23BMo6OFqarXfpW4B6mrXyWvb63rzeRcq+xcUU6nu9n/9Z/UnenOciA4eKpoAAAAASUVORK5CYII=</icon>

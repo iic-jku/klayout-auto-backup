@@ -1,21 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
-<klayout-macro>
- <description/>
- <version/>
- <category>pymacros</category>
- <prolog/>
- <epilog/>
- <doc/>
- <autorun>true</autorun>
- <autorun-early>false</autorun-early>
- <priority>0</priority>
- <shortcut/>
- <show-in-menu>false</show-in-menu>
- <group-name/>
- <menu-path/>
- <interpreter>python</interpreter>
- <dsl-interpreter-name/>
- <text># --------------------------------------------------------------------------------
+# --------------------------------------------------------------------------------
 # SPDX-FileCopyrightText: 2025 Martin Jan Köhler
 #
 # This program is free software: you can redistribute it and/or modify
@@ -29,18 +12,15 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program. If not, see &lt;http://www.gnu.org/licenses/&gt;.
+# along with this program. If not, see <http://www.gnu.org/licenses/>.
 # SPDX-License-Identifier: GPL-3.0-or-later
 #--------------------------------------------------------------------------------
 
 from __future__ import annotations
 from collections import defaultdict
-from dataclasses import dataclass, asdict, fields, is_dataclass
+from dataclasses import dataclass
 from datetime import datetime
 from functools import cached_property
-import hashlib
-import io
-import json
 import os 
 from pathlib import Path
 import re
@@ -51,31 +31,13 @@ from typing import *
 
 import pya
 
-#--------------------------------------------------------------------------------
-
-if sys.version_info &gt;= (3, 11):
-    from enum import StrEnum
-else:
-    from enum import Enum
-    class StrEnum(str, Enum):
-        def __str__(self) -&gt; str:
-            return str(self.value)
+from klayout_plugin_utils.debugging import debug, Debugging
+from klayout_plugin_utils.event_loop import EventLoop
+from klayout_plugin_utils.str_enum_compat import StrEnum
 
 #--------------------------------------------------------------------------------
 
 path_containing_this_script = os.path.realpath(os.path.join(os.path.dirname(__file__)))
-
-#--------------------------------------------------------------------------------
-
-DEBUG = False
-
-
-def debug(*args, **kwargs):
-    if DEBUG:
-        now = datetime.now()
-        timestamp = now.strftime("%Y-%m-%d %H:%M:%S") + f".{now.microsecond // 1000:03d}"
-        print(timestamp, *args, **kwargs)
-
 
 #--------------------------------------------------------------------------------
 
@@ -90,7 +52,7 @@ class LayoutFileFormat(StrEnum):
     GDS_TEXT = 'GDS II Text file'
     OASIS = 'OASIS file'
 
-    def suffix(self, original_layout_path: Path) -&gt; str:
+    def suffix(self, original_layout_path: Path) -> str:
         match self:
             case LayoutFileFormat.SAME_AS_SOURCE:
                 return ''.join(original_layout_path.suffixes)
@@ -121,8 +83,8 @@ class BackupConfig:
     use_incremental_file_versions: bool = False
 
     @classmethod
-    def load(cls) -&gt; BackupConfig:
-        if DEBUG:
+    def load(cls) -> BackupConfig:
+        if Debugging.DEBUG:
             debug("BackupConfig.load")
             
         mw = pya.MainWindow.instance()
@@ -153,7 +115,7 @@ class BackupConfig:
             )
     
     def save(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("BackupConfig.save")
             
         mw = pya.MainWindow.instance()
@@ -163,7 +125,7 @@ class BackupConfig:
         config_str = pya.AbstractMenu.pack_key_binding(self.dict())
         mw.set_config(CONFIG_KEY__AUTO_BACKUPS_CONFIG, config_str)
     
-    def dict(self) -&gt; Dict[str, str]:
+    def dict(self) -> Dict[str, str]:
         time = pya.QTime.fromMSecsSinceStartOfDay(self.trigger_timeout_in_msec)
         trigger_timeout_str = time.toString('mm:ss')
         return {
@@ -182,11 +144,11 @@ class BackupConfig:
         }
     
     @staticmethod    
-    def bool2str(v: bool) -&gt; str:
+    def bool2str(v: bool) -> str:
         return 'true' if v else 'false'
     
     @staticmethod
-    def str2bool(s: str) -&gt; bool:
+    def str2bool(s: str) -> bool:
         return s == 'true'
 
     
@@ -250,7 +212,7 @@ class AutoBackupConfigPage(pya.QDialog):
         self.load_config()
 
     def on_reset(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupConfigPage.on_reset")
         
         try:
@@ -261,7 +223,7 @@ class AutoBackupConfigPage(pya.QDialog):
             traceback.print_exc()
         
     def on_ok(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupConfigPage.on_ok")
         
         try:
@@ -274,7 +236,7 @@ class AutoBackupConfigPage(pya.QDialog):
         self.accept()
 
     def on_apply(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupConfigPage.on_apply")
 
         try:
@@ -285,11 +247,11 @@ class AutoBackupConfigPage(pya.QDialog):
             traceback.print_exc()
         
     def on_cancel(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupConfigPage.on_cancel")
         self.reject()
     
-    def config_from_ui(self) -&gt; BackupConfig:
+    def config_from_ui(self) -> BackupConfig:
         return BackupConfig(
             auto_backup_enabled = self.page.enable_auto_backup_chb.checked,
             trigger_by_timeout = self.page.trigger_by_timeout_rb.checked,
@@ -306,7 +268,7 @@ class AutoBackupConfigPage(pya.QDialog):
         )
     
     def update_ui_from_config(self, config: BackupConfig):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupConfigPage.update_ui_from_config")
         
         self.page.enable_auto_backup_chb.setChecked(config.auto_backup_enabled)
@@ -324,7 +286,7 @@ class AutoBackupConfigPage(pya.QDialog):
         self.page.folder_path_le.setText(config.custom_folder_path)
         
         idx = self.page.file_format_cob.findText(config.file_format.value)
-        if idx &gt;= 0:
+        if idx >= 0:
             self.page.file_format_cob.setCurrentIndex(idx)
 
         self.page.include_timestamp_rb.setChecked(config.use_file_name_timestamps)
@@ -348,14 +310,14 @@ class AutoBackupConfigPage(pya.QDialog):
             self.page.folder_path_le.setEnabled(False)
         
     def load_config(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupConfigPage.load_config")
     
         config = BackupConfig.load()
         self.update_ui_from_config(config)
     
     def on_browse_custom_folder(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupConfigPage.on_browse_custom_folder")
 
         folder = pya.QFileDialog.getExistingDirectory(
@@ -380,7 +342,7 @@ class LayoutSnapshot:
     timestamp: datetime
 
     @cached_property
-    def layout_serialized_data(self) -&gt; bytes:
+    def layout_serialized_data(self) -> bytes:
         o = pya.SaveLayoutOptions()
         o.oasis_recompress=True
         o.oasis_premissive=True
@@ -390,20 +352,20 @@ class LayoutSnapshot:
         data = self.layout.write_bytes(o)
         return data
     
-    def needs_backup(self, previous_snapshot: LayoutSnapshot) -&gt; bool:
+    def needs_backup(self, previous_snapshot: LayoutSnapshot) -> bool:
         if not previous_snapshot.backup_file_path.exists():
-            if DEBUG:
+            if Debugging.DEBUG:
                 debug(f"LayoutSnapshot.needs_backup: backup needed, "
                       f"no previous backup yet: {str(self.backup_file_path)}")
             return True
-        if previous_snapshot.timestamp &gt; self.timestamp:
-            if DEBUG:
+        if previous_snapshot.timestamp > self.timestamp:
+            if Debugging.DEBUG:
                 debug(f"LayoutSnapshot.needs_backup: backup not needed, previous backup is newer: "
                       f"{str(previous_snapshot.backup_file_path)}")
             return False  # we lag behind
         
         same_data = self.layout_serialized_data == previous_snapshot.layout_serialized_data
-        if DEBUG:
+        if Debugging.DEBUG:
             debug(f"LayoutSnapshot.needs_backup: backup {'not ' if same_data else ''}needed, data differs, "
                   f"path {str(previous_snapshot.backup_file_path)}")
         
@@ -422,7 +384,7 @@ class BackupScheduler:
         self.previous_snapshot_by_path: Dict[Path, LayoutSnapshot] = {}
 
     def start(self, config: BackupConfig):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("BackupScheduler.start")
     
         self.config = config
@@ -439,7 +401,7 @@ class BackupScheduler:
         #    self.change_counter = 0
         
     def stop(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("BackupScheduler.stop")
         self.config = None
         self.timer.stop()
@@ -447,7 +409,7 @@ class BackupScheduler:
     def _layout_file_writer_thread(self, 
                                    layout: pya.Layout, 
                                    file_path: Path):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug(f"BackupScheduler._layout_file_writer_thread ({file_path})")
         
         try:
@@ -460,7 +422,7 @@ class BackupScheduler:
             print("BackupScheduler._layout_file_writer_thread caught an exception", e)
             traceback.print_exc()
         
-    def scan_backup_dir_for_highest_version(self, backup_dir_path: Path, original_stem: str) -&gt; Optional[Tuple[int, str]]:
+    def scan_backup_dir_for_highest_version(self, backup_dir_path: Path, original_stem: str) -> Optional[Tuple[int, str]]:
         pattern = re.compile(fr"{original_stem}_backup_v(\d+)\..*$")
 
         max_version = -1
@@ -480,7 +442,7 @@ class BackupScheduler:
     def backup_layout_file_path(self, 
                                 config: BackupConfig, 
                                 original_layout_path: Path,
-                                timestamp: datetime) -&gt; Path:
+                                timestamp: datetime) -> Path:
         backup_dir_path: Path
         if config.use_relative_folder_path:
             backup_dir_path = original_layout_path.parent / config.relative_path
@@ -497,7 +459,7 @@ class BackupScheduler:
             backup_filename = f"{original_stem}_backup_{timestamp_str}{new_suffix}"
         elif config.use_incremental_file_versions:
             version, previous_backup_filename = self.scan_backup_dir_for_highest_version(backup_dir_path, original_stem)
-            if DEBUG:
+            if Debugging.DEBUG:
                 debug(f"BackupScheduler.backup_layout_file_path: found highest version {version}")
             version += 1
             backup_filename = f"{original_stem}_backup_v{version:03d}{new_suffix}"
@@ -508,7 +470,7 @@ class BackupScheduler:
         return backup_path
         
     def on_timeout(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("BackupScheduler.on_timeout")
 
         try:
@@ -564,7 +526,7 @@ class BackupScheduler:
             print("BackupScheduler.on_timeout caught an exception", e)
             traceback.print_exc()
 
-    def effective_folder_path(self, layout_path: str) -&gt; Optional[str]:
+    def effective_folder_path(self, layout_path: str) -> Optional[str]:
         path: str
         if self.config.use_relative_folder_path:
             path = os.path.join(os.path.dir(layout_path), self.config.relative_path)
@@ -584,7 +546,7 @@ class AutoBackupPluginFactory(pya.PluginFactory):
     def __init__(self):
         super().__init__()
         
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupPluginFactory.ctor")
         
         self.has_tool_entry = False
@@ -602,8 +564,8 @@ class AutoBackupPluginFactory(pya.PluginFactory):
             print("AutoBackupPluginFactory.ctor caught an exception", e)
             traceback.print_exc()
   
-    def configure(self, name: str, value: str) -&gt; bool:
-        if DEBUG:
+    def configure(self, name: str, value: str) -> bool:
+        if Debugging.DEBUG:
             debug(f"AutoBackupPluginFactory.configure, name={name}, value={value}")
 
         if name == CONFIG_KEY__ENABLE_AUTO_BACKUPS:
@@ -619,14 +581,14 @@ class AutoBackupPluginFactory(pya.PluginFactory):
         return False
 
     def toggle_auto_backup_enabled(self, action: pya.Action):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug(f"AutoBackupPluginFactory.toggle_auto_backup_enabled: {action.checked}")
             
         mw = pya.MainWindow.instance()
         mw.set_config(CONFIG_KEY__ENABLE_AUTO_BACKUPS, 'true' if action.checked else 'false')
     
     def open_auto_backup_preferences(self, action: pya.Action):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupPluginFactory.open_auto_backup_preferences")
         
         mw = pya.MainWindow.instance()
@@ -634,7 +596,7 @@ class AutoBackupPluginFactory(pya.PluginFactory):
         self.config_window.show()
     
     def reset_menu(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug("AutoBackupPluginFactory.reset_menu")
         
         config = BackupConfig.load()
@@ -658,7 +620,7 @@ class AutoBackupPluginFactory(pya.PluginFactory):
         menu.insert_item(f"file_menu.auto_backup_menu.#1", f"auto_backup_setup", action)
 
     def setup(self):
-        if DEBUG:
+        if Debugging.DEBUG:
             debug(f"AutoBackupPluginFactory.setup")
     
         self.reset_menu()
@@ -674,12 +636,3 @@ class AutoBackupPluginFactory(pya.PluginFactory):
         if self.scheduler is not None:
             self.scheduler.stop()
 
-
-if 'AutoBackupPluginFactory_Singleton_Instance' in globals() and \
-    AutoBackupPluginFactory_Singleton_Instance is not None:
-    AutoBackupPluginFactory_Singleton_Instance.stop()
-    AutoBackupPluginFactory_Singleton_Instance = None
-    
-AutoBackupPluginFactory_Singleton_Instance = AutoBackupPluginFactory()
-</text>
-</klayout-macro>

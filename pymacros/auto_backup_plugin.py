@@ -345,7 +345,7 @@ class LayoutSnapshot:
     def layout_serialized_data(self) -> bytes:
         o = pya.SaveLayoutOptions()
         o.oasis_recompress=True
-        o.oasis_premissive=True
+        o.oasis_permissive=True
         o.select_all_cells()
         o.select_all_layers()
         o.set_format_from_filename('example.oas')
@@ -494,7 +494,11 @@ class BackupScheduler:
 
                         debug(f"BackupScheduler.on_timeout: cell view {cv.name} is dirty!")
                         
-                        layout_copy = cv.layout().dup()
+                        # NOTE: KLayout clears the undo stack as soon as we write even a copy of the layout object,
+                        #        so we need to disconnect the undo manager by creating a new instance
+                        layout_copy = pya.Layout()
+                        layout_copy.assign(cv.layout())
+                        
                         timestamp = datetime.now()
                         
                         original_layout_path = Path(cv.filename())

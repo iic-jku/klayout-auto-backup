@@ -345,7 +345,7 @@ class LayoutSnapshot:
     def layout_serialized_data(self) -> bytes:
         o = pya.SaveLayoutOptions()
         o.oasis_recompress=True
-        o.oasis_premissive=True
+        o.oasis_permissive=True
         o.select_all_cells()
         o.select_all_layers()
         o.set_format_from_filename('example.oas')

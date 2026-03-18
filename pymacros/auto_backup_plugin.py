@@ -492,7 +492,8 @@ class BackupScheduler:
                         #       worthy of backup since the previous backup,
                         #       otherwise we end up with a lot of redundant files
 
-                        debug(f"BackupScheduler.on_timeout: cell view {cv.name} is dirty!")
+                        if Debugging.DEBUG:
+                            debug(f"BackupScheduler.on_timeout: cell view {cv.name} is dirty!")
                         
                         # NOTE: KLayout clears the undo stack as soon as we write even a copy of the layout object,
                         #        so we need to disconnect the undo manager by creating a new instance
@@ -524,7 +525,11 @@ class BackupScheduler:
                                                                        args=(layout_copy, backup_file_path))  #, daemon=True)
                             self.file_writer_thread.start()
                 else:
-                    debug(f"BackupScheduler.on_timeout: layout view {lv.active_cellview().cell.name} is not dirty!")
+                    if Debugging.DEBUG:
+                        if lv.active_cellview().cell is None:
+                            debug(f"BackupScheduler.on_timeout: layout view nas no cell (thus not dirty)!")
+                        else:
+                            debug(f"BackupScheduler.on_timeout: layout view {lv.active_cellview().cell.name} is not dirty!")
             
         except Exception as e:
             print("BackupScheduler.on_timeout caught an exception", e)

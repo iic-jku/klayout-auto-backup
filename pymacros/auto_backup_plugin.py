@@ -455,6 +455,10 @@ class BackupScheduler:
         backup_filename: Path
         original_stem = original_layout_path.stem.split('.')[0]
         new_suffix = config.file_format.suffix(original_layout_path=original_layout_path)
+        if not new_suffix:
+            new_suffix = '.gds.gz'  # for new, never yet saved files, default to .gds.gz
+        if not original_stem:  # unsaved file
+            original_stem = 'unsaved'
         if config.use_file_name_timestamps:
             timestamp_str = timestamp.strftime("%Y-%m-%d_%Hh%Mm%s") + f"_{timestamp.microsecond // 1000:03d}"
             backup_filename = f"{original_stem}_backup_{timestamp_str}{new_suffix}"

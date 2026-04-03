@@ -3,7 +3,7 @@
  <name>AutoBackupPlugin</name>
  <token/>
  <hidden>false</hidden>
- <version>0.7</version>
+ <version>0.8</version>
  <api-version/>
  <title>Automatic Backups</title>
  <doc>Create automatic backups of edited layouts</doc>

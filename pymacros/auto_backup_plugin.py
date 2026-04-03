@@ -53,17 +53,18 @@ class LayoutFileFormat(StrEnum):
     OASIS = 'OASIS file'
 
     def suffix(self, original_layout_path: Path) -> str:
-        match self:
-            case LayoutFileFormat.SAME_AS_SOURCE:
+        if self == LayoutFileFormat.SAME_AS_SOURCE:
                 return ''.join(original_layout_path.suffixes)
-            case LayoutFileFormat.GDS_BINARY:
+        elif self == LayoutFileFormat.GDS_BINARY:
                 return '.gds'
-            case LayoutFileFormat.GDS_BINARY_GZ:
+        elif self == LayoutFileFormat.GDS_BINARY_GZ:
                 return '.gds.gz'
-            case LayoutFileFormat.GDS_TEXT:
+        elif self == LayoutFileFormat.GDS_TEXT:
                 return '.txt'
-            case LayoutFileFormat.OASIS:
+        elif self == LayoutFileFormat.OASIS:
                 return '.oas'
+        else:
+            raise NotImplementedError(f"LayoutFileFormat.suffix: unhandled LayoutFileFormat {self}")
 
 
 @dataclass

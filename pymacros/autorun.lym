@@ -16,7 +16,7 @@
  <interpreter>python</interpreter>
  <dsl-interpreter-name/>
  <text># --------------------------------------------------------------------------------
-# SPDX-FileCopyrightText: 2025 Martin Jan Köhler
+# SPDX-FileCopyrightText: 2025-2026 Martin Jan Köhler
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ import klayout_plugin_utils.event_loop
 import klayout_plugin_utils.object_description
 import klayout_plugin_utils.str_enum_compat
 import auto_backup_plugin
+import sidecar_path_utils
 
 reload(klayout_plugin_utils.debugging)
 reload(klayout_plugin_utils.editor_options)
@@ -66,6 +67,7 @@ reload(klayout_plugin_utils.event_loop)
 reload(klayout_plugin_utils.object_description)
 reload(klayout_plugin_utils.str_enum_compat)
 reload(auto_backup_plugin)
+reload(sidecar_path_utils)
 
 import klayout_plugin_utils.debugging
 klayout_plugin_utils.debugging.Debugging.init_debugging()

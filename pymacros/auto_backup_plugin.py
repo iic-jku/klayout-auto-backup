@@ -1,5 +1,5 @@
 # --------------------------------------------------------------------------------
-# SPDX-FileCopyrightText: 2025 Martin Jan Köhler
+# SPDX-FileCopyrightText: 2025-2026 Martin Jan Köhler
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,12 +18,13 @@
 
 from __future__ import annotations
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cached_property
 import os 
 from pathlib import Path
 import re
+import shutil
 import sys
 import threading
 import traceback
@@ -34,6 +35,8 @@ import pya
 from klayout_plugin_utils.debugging import debug, Debugging
 from klayout_plugin_utils.event_loop import EventLoop
 from klayout_plugin_utils.str_enum_compat import StrEnum
+
+from sidecar_path_utils import SidecarPathUtils
 
 #--------------------------------------------------------------------------------
 
@@ -334,6 +337,22 @@ class AutoBackupConfigPage(pya.QDialog):
 
 #--------------------------------------------------------------------------------
 
+@dataclass
+class SidecarBackupEntry:
+    """A single sidecar file to back up alongside the main layout."""
+    source_path: Path       # original sidecar on disk
+    backup_path: Path       # destination in the backup directory
+
+
+@dataclass
+class BackupPaths:
+    """Backup destinations for the layout file and all of its sidecars."""
+    layout_backup_path: Path
+    sidecars: List[SidecarBackupEntry] = field(default_factory=list)
+
+
+#--------------------------------------------------------------------------------
+
 
 @dataclass
 class LayoutSnapshot:
@@ -371,6 +390,9 @@ class LayoutSnapshot:
                   f"path {str(previous_snapshot.backup_file_path)}")
         
         return not same_data
+
+
+#--------------------------------------------------------------------------------
         
 
 class BackupScheduler:
@@ -407,24 +429,45 @@ class BackupScheduler:
         self.config = None
         self.timer.stop()
 
+    @staticmethod
+    def _atomic_copy(src: Path, dst: Path):
+        """Copy *src* to *dst* atomically via a temporary file."""
+        tmp = dst.with_name(".tmp_" + dst.name)
+        shutil.copy2(str(src), str(tmp))
+        os.replace(str(tmp), str(dst))
+    
     def _layout_file_writer_thread(self, 
                                    layout: pya.Layout, 
-                                   file_path: Path):
+                                   backup_paths: BackupPaths):
         if Debugging.DEBUG:
-            debug(f"BackupScheduler._layout_file_writer_thread ({file_path})")
+            debug(f"BackupScheduler._layout_file_writer_thread ({backup_paths.layout_backup_path})")
         
         try:
-            backup_dir = file_path.parent
+            # Write the layout atomically
+            backup_dir = backup_paths.layout_backup_path.parent
             backup_dir.mkdir(parents=False, exist_ok=True)
-            tmp_file_path = file_path.with_name(".tmp_" + file_path.name)
+            
+            tmp_file_path = backup_paths.layout_backup_path.with_name(".tmp_" + backup_paths.layout_backup_path.name)
             layout.write(str(tmp_file_path))
-            os.replace(str(tmp_file_path), str(file_path))
+            os.replace(str(tmp_file_path), str(backup_paths.layout_backup_path))
+            
+            # Copy every sidecar file atomically
+            for sidecar in backup_paths.sidecars:
+                if sidecar.source_path.exists():
+                    self._atomic_copy(sidecar.source_path, sidecar.backup_path)
+                    if Debugging.DEBUG:
+                        debug(f"BackupScheduler._layout_file_writer_thread: "
+                              f"sidecar {sidecar.source_path.name} -> {sidecar.backup_path}")
+                else:
+                    if Debugging.DEBUG:
+                        debug(f"BackupScheduler._layout_file_writer_thread: "
+                              f"sidecar {sidecar.source_path} not found on disk, skipping")
         except Exception as e:
             print("BackupScheduler._layout_file_writer_thread caught an exception", e)
             traceback.print_exc()
         
     def scan_backup_dir_for_highest_version(self, backup_dir_path: Path, original_stem: str) -> Optional[Tuple[int, str]]:
-        pattern = re.compile(fr"{original_stem}_backup_v(\d+)\..*$")
+        pattern = re.compile(fr"{re.escape(original_stem)}_backup_v(\d+)\..*$")
 
         max_version = -1
         max_filename = None
@@ -440,10 +483,16 @@ class BackupScheduler:
             return None
         return (max_version, max_filename)
     
-    def backup_layout_file_path(self, 
-                                config: BackupConfig, 
-                                original_layout_path: Path,
-                                timestamp: datetime) -> Path:
+    def backup_layout_file_paths(self, 
+                                 config: BackupConfig, 
+                                 original_layout_path: Path,
+                                 timestamp: datetime) -> BackupPaths:
+        """Compute backup paths for the layout and its optional sidecar, e.g. .klay.lib.
+        
+        Both files share the same timestamp / version number so they stay paired.
+        """
+        
+        # --- backup directory ---------------------------------------------------
         backup_dir_path: Path
         if config.use_relative_folder_path:
             backup_dir_path = original_layout_path.parent / config.relative_path
@@ -452,28 +501,48 @@ class BackupScheduler:
         else:
             raise NotImplementedError(f"can't obtain backup folder path for config {config}")
         
-        backup_filename: Path
-        original_stem = original_layout_path.stem.split('.')[0]
+        # --- stem & suffix ------------------------------------------------------
+        original_stem = SidecarPathUtils.compound_stem(original_layout_path)
         new_suffix = config.file_format.suffix(original_layout_path=original_layout_path)
         if not new_suffix:
             new_suffix = '.gds.gz'  # for new, never yet saved files, default to .gds.gz
         if not original_stem:  # unsaved file
             original_stem = 'unsaved'
+            
+        # --- versioned / timestamped base name (no extension) -------------------
         if config.use_file_name_timestamps:
-            timestamp_str = timestamp.strftime("%Y-%m-%d_%Hh%Mm%s") + f"_{timestamp.microsecond // 1000:03d}"
-            backup_filename = f"{original_stem}_backup_{timestamp_str}{new_suffix}"
+            timestamp_str = timestamp.strftime("%Y-%m-%d_%Hh%Mm%S") + f"_{timestamp.microsecond // 1000:03d}"
+            backup_base = f"{original_stem}_backup_{timestamp_str}"
         elif config.use_incremental_file_versions:
-            version, previous_backup_filename = self.scan_backup_dir_for_highest_version(backup_dir_path, original_stem)
+            result = self.scan_backup_dir_for_highest_version(backup_dir_path, original_stem)
+            version = (result[0] if result is not None else -1) + 1
             if Debugging.DEBUG:
-                debug(f"BackupScheduler.backup_layout_file_path: found highest version {version}")
-            version += 1
-            backup_filename = f"{original_stem}_backup_v{version:03d}{new_suffix}"
+                debug(f"BackupScheduler.backup_layout_file_paths: next version {version}")
+            backup_base = f"{original_stem}_backup_v{version:03d}"
         else:
             raise NotImplementedError(f"can't obtain backup file name for config {config}")
         
-        backup_path = backup_dir_path / backup_filename
-        return backup_path
+        layout_backup_path = backup_dir_path / f"{backup_base}{new_suffix}"
         
+        # --- sidecar files ------------------------------------------------------
+        sidecars: List[SidecarBackupEntry] = [
+            SidecarBackupEntry(
+                source_path=info.path,
+                backup_path=backup_dir_path / f"{backup_base}{info.suffix}",
+            )
+            for info in SidecarPathUtils.get_sidecar_paths(original_layout_path)
+        ]
+
+        return BackupPaths(layout_backup_path=layout_backup_path,
+                           sidecars=sidecars)
+        
+    # Keep the old single-path API name for backward compat (used by LayoutSnapshot)
+    def backup_layout_file_path(self,
+                                config: BackupConfig,
+                                original_layout_path: Path,
+                                timestamp: datetime) -> Path:
+        return self.backup_layout_file_paths(config, original_layout_path, timestamp).layout_backup_path
+    
     def on_timeout(self):
         if Debugging.DEBUG:
             debug("BackupScheduler.on_timeout")
@@ -509,11 +578,11 @@ class BackupScheduler:
                         
                         original_layout_path = Path(cv.filename())
                         
-                        backup_file_path = self.backup_layout_file_path(config, original_layout_path, timestamp)
+                        backup_paths = self.backup_layout_file_paths(config, original_layout_path, timestamp)
                         
                         pending_backup = LayoutSnapshot(cell_view=cv, 
                                                         layout=layout_copy,
-                                                        backup_file_path=backup_file_path,
+                                                        backup_file_path=backup_paths.layout_backup_path,
                                                         timestamp=timestamp)
                         
                         previous_backup = self.previous_snapshot_by_path.get(original_layout_path, None)
@@ -527,7 +596,7 @@ class BackupScheduler:
                                 self.file_writer_thread.join()
                             
                             self.file_writer_thread = threading.Thread(target=self._layout_file_writer_thread, 
-                                                                       args=(layout_copy, backup_file_path))  #, daemon=True)
+                                                                       args=(layout_copy, backup_paths))  #, daemon=True)
                             self.file_writer_thread.start()
                 else:
                     if Debugging.DEBUG:

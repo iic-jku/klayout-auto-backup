@@ -543,7 +543,7 @@ class BackupScheduler:
     def effective_folder_path(self, layout_path: str) -> Optional[str]:
         path: str
         if self.config.use_relative_folder_path:
-            path = os.path.join(os.path.dir(layout_path), self.config.relative_path)
+            path = os.path.join(os.path.dirname(layout_path), self.config.relative_path)
         elif self.config.use_custom_folder_path:
             path = self.config.custom_folder_path
         path = os.abspath(os.realpath(path))

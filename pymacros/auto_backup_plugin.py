@@ -259,7 +259,7 @@ class AutoBackupConfigPage(pya.QDialog):
             trigger_timeout_in_msec = int(self.page.timeout_te.time.msecsSinceStartOfDay()),
             trigger_by_changes = self.page.trigger_by_changes_rb.checked,
             trigger_change_theshold = self.page.max_changes_sb.value,
-            use_relative_folder_path = self.page.relative_path_le.text,
+            use_relative_folder_path = self.page.relative_path_rb.checked,
             relative_path = Path(self.page.relative_path_le.text),
             use_custom_folder_path = self.page.custom_folder_rb.checked,
             custom_folder_path = Path(self.page.folder_path_le.text),
@@ -543,7 +543,7 @@ class BackupScheduler:
     def effective_folder_path(self, layout_path: str) -> Optional[str]:
         path: str
         if self.config.use_relative_folder_path:
-            path = os.path.join(os.path.dir(layout_path), self.config.relative_path)
+            path = os.path.join(os.path.dirname(layout_path), self.config.relative_path)
         elif self.config.use_custom_folder_path:
             path = self.config.custom_folder_path
         path = os.abspath(os.realpath(path))
